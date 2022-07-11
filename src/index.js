@@ -6,14 +6,34 @@ const app = express();
 
 app.use(express.json());
 
-const repositories = [];
+let repositories = [
+  {
+    id: "1f08be12-3fa4-4c30-b387-c25ad5c3e610",
+    title: "corrigindo-codigo-nodejs",
+    url: "https://github.com/Jordaobm/corrigindo-codigo-nodejs",
+    techs: ["nodejs", "javascript"],
+    likes: 0
+  }
+];
+
+function checkExistRepository(request, response, next) {
+  const { id } = request.params;
+
+  const repository = repositories?.find((e) => e?.id === id);
+
+  if (!repository) {
+    return response.status(404).json({ error: "Repositório não encontrado" });
+  }
+
+  return next();
+}
 
 app.get("/repositories", (request, response) => {
   return response.json(repositories);
 });
 
 app.post("/repositories", (request, response) => {
-  const { title, url, techs } = request.body
+  const { title, url, techs } = request.body;
 
   const repository = {
     id: uuid(),
@@ -23,52 +43,57 @@ app.post("/repositories", (request, response) => {
     likes: 0
   };
 
-  return response.json(repository);
+  repositories?.push(repository);
+
+  return response?.status(201).json(repository);
 });
 
-app.put("/repositories/:id", (request, response) => {
+app.put("/repositories/:id", checkExistRepository, (request, response) => {
   const { id } = request.params;
-  const updatedRepository = request.body;
+  const { title, url, techs } = request.body;
 
-  repositoryIndex = repositories.findindex(repository => repository.id === id);
+  let editRepository = {};
 
-  if (repositoryIndex < 0) {
-    return response.status(404).json({ error: "Repository not found" });
-  }
+  repositories = repositories?.map((repository) => {
+    if (repository?.id === id) {
+      editRepository = { ...repository, title, url, techs };
 
-  const repository = { ...repositories[repositoryIndex], ...updatedRepository };
+      return editRepository;
+    }
 
-  repositories[repositoryIndex] = repository;
+    return repository;
+  });
 
-  return response.json(repository);
+  return response.status(200)?.json(editRepository);
 });
 
-app.delete("/repositories/:id", (request, response) => {
+app.delete("/repositories/:id", checkExistRepository, (request, response) => {
   const { id } = request.params;
 
-  repositoryIndex = repositories.findIndex(repository => repository.id === id);
-
-  if (repositoryIndex > 0) {
-    return response.status(404).json({ error: "Repository not found" });
-  }
-
-  repositories.splice(repositoryIndex, 1);
+  repositories = repositories?.filter((e) => e?.id !== id);
 
   return response.status(204).send();
 });
 
-app.post("/repositories/:id/like", (request, response) => {
-  const { id } = request.params;
+app.post(
+  "/repositories/:id/like",
+  checkExistRepository,
+  (request, response) => {
+    const { id } = request.params;
 
-  repositoryIndex = repositories.findIndex(repository => repository.id === id);
+    let likeCount = 0;
 
-  if (repositoryIndex < 0) {
-    return response.status(404).json({ error: "Repository not found" });
+    repositories = repositories?.map((e) => {
+      if (e?.id === id) {
+        likeCount = e?.likes + 1;
+        return { ...e, likes: likeCount };
+      }
+
+      return e;
+    });
+
+    return response?.status(200)?.json({ likes: likeCount });
   }
-
-  const likes = ++repositories[repositoryIndex].likes;
-
-  return response.json('likes');
-});
+);
 
 module.exports = app;
